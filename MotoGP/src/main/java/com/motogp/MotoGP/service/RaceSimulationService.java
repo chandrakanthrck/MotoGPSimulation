@@ -1,31 +1,23 @@
 package com.motogp.MotoGP.service;
 
-import com.motogp.MotoGP.model.Lap;
-import com.motogp.MotoGP.model.PitStop;
-import com.motogp.MotoGP.model.RaceSession;
-import com.motogp.MotoGP.model.Rider;
-import com.motogp.MotoGP.repository.LapRepository;
-import com.motogp.MotoGP.repository.PitStopRepository;
-import com.motogp.MotoGP.repository.RaceSessionRepository;
-import com.motogp.MotoGP.repository.RiderRepository;
+import com.motogp.MotoGP.model.*;
+import com.motogp.MotoGP.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.*;
 
 @Service
 public class RaceSimulationService {
+
     private final RaceSessionRepository raceSessionRepository;
     private final LapRepository lapRepository;
     private final PitStopRepository pitStopRepository;
     private final RiderRepository riderRepository;
 
-    // Only 2 crews available
+    // Only 2 crews available for pit stops
     private final Semaphore pitCrewSemaphore = new Semaphore(2);
-
 
     public RaceSimulationService(RaceSessionRepository raceSessionRepository,
                                  LapRepository lapRepository,
@@ -37,67 +29,86 @@ public class RaceSimulationService {
         this.riderRepository = riderRepository;
     }
 
-    public void startRace(List<Rider> riders){
+    public void startRace(List<Rider> riders) {
         RaceSession raceSession = new RaceSession();
         raceSession.setTrackName("Le Mans");
         raceSession.setStartTime(LocalDateTime.now());
-        raceSessionRepository.save(raceSession);
+        raceSession = raceSessionRepository.save(raceSession);
 
+        CountDownLatch raceStartLatch = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(riders.size());
 
-        for(Rider rider : riders){
+        for (Rider rider : riders) {
             rider.setRaceSession(raceSession);
             riderRepository.save(rider);
-            executor.submit(() -> runRiderRace(rider));
+
+            executor.submit(() -> {
+                try {
+                    System.out.println("🔒 " + rider.getName() + " waiting for race start...");
+                    raceStartLatch.await(); // Wait for green light
+                    runRiderRace(rider);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            });
         }
+
+        try {
+            Thread.sleep(1000); // Let all threads reach await()
+        } catch (InterruptedException ignored) {}
+
+        System.out.println("🏁 RACE STARTING NOW!");
+        raceStartLatch.countDown(); // Green light: all riders go!
 
         executor.shutdown();
     }
 
-    private void runRiderRace(Rider rider){
-        for(int lap = 1; lap <= 5; lap++){
-            try{
-                //simulation
+    private void runRiderRace(Rider rider) {
+        for (int lap = 1; lap <= 5; lap++) {
+            try {
                 long lapTime = (long) (3000 + Math.random() * 2000);
-                //real time lap duration simulation
-                Thread.sleep(lapTime);
-                //log the completed lap
+                Thread.sleep(lapTime); // Simulate lap duration
+
                 Lap newLap = new Lap();
                 newLap.setLapNumber(lap);
                 newLap.setLapTimeMillis(lapTime);
                 newLap.setTimestamp(LocalDateTime.now());
                 newLap.setRider(rider);
-                //lap data saved to repository
                 lapRepository.save(newLap);
-                //at lap 3, the rider will go for a pitstop
-                if(lap == 3){
+
+                System.out.println("✅ " + rider.getName() + " completed lap " + lap);
+
+                if (lap == 3) {
                     handlePitStop(rider);
                 }
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }
     }
 
-    // This method simulates a pit stop operation (tire/fuel) with crew limitation
-    private void handlePitStop(Rider rider){
-        try{
-            // Limit pit stops to only 2 riders at a time using a Semaphore
-            pitCrewSemaphore.acquire(); // Waits if both crews are busy
-            // Create new pit stop log entry
-            PitStop pit = new PitStop();
-            pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire"); // Randomly pick type
-            pit.setStartTime(LocalDateTime.now());
-            Thread.sleep((long) (1000 + Math.random() * 2000)); // 🛠 Work being done
+    private void handlePitStop(Rider rider) {
+        try {
+            System.out.println("🅿️ " + rider.getName() + " waiting for pit crew...");
+            pitCrewSemaphore.acquire();
 
-            // Record when pit stop ends
+            PitStop pit = new PitStop();
+            pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
+            pit.setStartTime(LocalDateTime.now());
+
+            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit time
+
             pit.setEndTime(LocalDateTime.now());
             pit.setRider(rider);
-            pitStopRepository.save(pit); // Save pit stop data to DB
+            pitStopRepository.save(pit);
+
+            System.out.println("🔧 " + rider.getName() + " finished pit stop (" + pit.getType() + ")");
+
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Restore interrupted state
+            Thread.currentThread().interrupt();
         } finally {
-            pitCrewSemaphore.release(); // Free up pit crew slot for next rider
+            pitCrewSemaphore.release(); // Release pit crew slot
         }
     }
 }
