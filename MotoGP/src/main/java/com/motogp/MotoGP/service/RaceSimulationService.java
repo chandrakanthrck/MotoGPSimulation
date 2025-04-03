@@ -1,4 +1,4 @@
-package com.motogp.MotoGP.Service;
+package com.motogp.MotoGP.service;
 
 import com.motogp.MotoGP.model.Lap;
 import com.motogp.MotoGP.model.PitStop;
@@ -83,7 +83,7 @@ public class RaceSimulationService {
     private void handlePitStop(Rider rider){
         try{
             // Limit pit stops to only 2 riders at a time using a Semaphore
-            pitCrewSemaphore.acquire(); // ⛔ Waits if both crews are busy
+            pitCrewSemaphore.acquire(); // Waits if both crews are busy
             // Create new pit stop log entry
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire"); // Randomly pick type
@@ -93,11 +93,11 @@ public class RaceSimulationService {
             // Record when pit stop ends
             pit.setEndTime(LocalDateTime.now());
             pit.setRider(rider);
-            pitStopRepository.save(pit); // 📋 Save pit stop data to DB
+            pitStopRepository.save(pit); // Save pit stop data to DB
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt(); // Restore interrupted state
         } finally {
-            pitCrewSemaphore.release(); // ✅ Free up pit crew slot for next rider
+            pitCrewSemaphore.release(); // Free up pit crew slot for next rider
         }
     }
 }

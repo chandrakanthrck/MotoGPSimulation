@@ -1,6 +1,6 @@
 package com.motogp.MotoGP.controller;
 
-import com.motogp.MotoGP.Service.RaceSimulationService;
+import com.motogp.MotoGP.service.RaceSimulationService;
 import com.motogp.MotoGP.model.Rider;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,7 +27,7 @@ public class RaceController {
             throw new IllegalArgumentException("Rider names list cannot be empty.");
         }
 
-        System.out.println("🔥 [DEBUG] /race/start called with riders: " + riderNames);
+        System.out.println("[DEBUG] /race/start called with riders: " + riderNames);
 
         List<Rider> riders = riderNames.stream().map(name -> {
             Rider rider = new Rider();
@@ -38,7 +38,7 @@ public class RaceController {
 
         simulationService.startRace(riders);
 
-        return "🏁 Race started with " + riders.size() + " riders!";
+        return "Race started with " + riders.size() + " riders!";
     }
 
     /**
@@ -46,6 +46,6 @@ public class RaceController {
      */
     @GetMapping("/ping")
     public String ping() {
-        return "✅ RaceController is up!";
+        return "RaceController is up!";
     }
 }
