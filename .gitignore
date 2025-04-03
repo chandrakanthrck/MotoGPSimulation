@@ -1,0 +1,52 @@
+# === Java & Maven ===
+target/
+*.log
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+
+# === IDEs ===
+# IntelliJ
+.idea/
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+
+# Eclipse
+*.classpath
+*.project
+*.settings/
+
+# NetBeans
+nbproject/private/
+build/
+
+# === OS-specific ===
+.DS_Store
+Thumbs.db
+
+# === Environment files ===
+.env
+*.local
+
+# === Database / Runtime ===
+*.h2.db
+*.mv.db
+*.sqlite
+*.pid
+*.sock
+
+# === Logs / temp ===
+logs/
+*.log
+*.tmp
+*.swp
+
+# === Misc ===
+# compiled reports, uploads, etc.
+upload/
+out/
