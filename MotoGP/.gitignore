@@ -1,10 +1,17 @@
-HELP.md
+# === Java / Maven ===
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.tmp
+*.pid
 
-### STS ###
+# Maven wrapper
+!.mvn/wrapper/maven-wrapper.jar
+
+# === Spring Tools Suite (STS) ===
 .apt_generated
 .classpath
 .factorypath
@@ -13,21 +20,44 @@ target/
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
+# === IntelliJ IDEA ===
+.idea/
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+# === VS Code ===
 .vscode/
+
+# === NetBeans ===
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# === Gradle (if any) ===
+build/
+
+# === OS-specific ===
+.DS_Store
+Thumbs.db
+
+# === Runtime & Database Artifacts ===
+*.h2.db
+*.mv.db
+*.sqlite
+*.sock
+
+# === Environment / Config ===
+.env
+*.local
+
+# === Logs & Debug ===
+logs/
+*.log
+
+# === Misc ===
+HELP.md
+upload/
+out/
