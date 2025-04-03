@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/motogp_db?socket=/tmp/mysql.sock
+    username: root
+    password: # leave blank if no password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update  # use 'validate' or 'none' in production
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  application:
+    name: motogp-simulator
+
+server:
+  port: 8080
