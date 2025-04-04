@@ -96,33 +96,44 @@ public class RaceSimulationService {
     private void handlePitStop(Rider rider) {
         pitLock.lock();
         try {
-            System.out.println("P" + rider.getName() + " wants to enter pit");
-            while(pitInUse>=MAX_PIT_SLOTS){
-                System.out.println("Wait " + rider.getName() + " waiting. pit full.");
+            System.out.println("🅿️ " + rider.getName() + " wants to enter the pit...");
+
+            // Wait until a pit crew slot is available
+            while (pitInUse >= MAX_PIT_SLOTS) {
+                System.out.println("⏳ " + rider.getName() + " is waiting. Pit is full.");
                 pitAvailable.await();
-        }
-            //enter pit
+            }
+
+            // Enter pit
             pitInUse++;
-            System.out.println("Ongoing" + rider.getName() + " has entered the pit. (in use: " + pitInUse + ")");
-             //Create and save pit stop log
+            System.out.println("🔧 " + rider.getName() + " has entered the pit. (in use: " + pitInUse + ")");
+
+            // Prepare pit stop log
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
 
+            // Unlock while simulating the actual pit stop
+            pitLock.unlock();
+            Thread.sleep((long) (1000 + Math.random() * 2000)); // simulate pit duration
+            pitLock.lock();
 
-            pitLock.unlock(); // Unlock during work to let others proceed (important!)
-            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit time
-            pitLock.lock();   // Lock again to update shared state
             pit.setEndTime(LocalDateTime.now());
             pit.setRider(rider);
             pitStopRepository.save(pit);
+
+            // Exit pit
             pitInUse--;
-            System.out.println("✅ " + rider.getName() + " leaves pit. (in use: " + pitInUse + ")");
-            pitAvailable.signal(); // Wake up next waiting rider
+            System.out.println("✅ " + rider.getName() + " leaves the pit. (in use: " + pitInUse + ")");
+            pitAvailable.signal(); // Notify one waiting rider
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            pitLock.unlock(); // Always unlock
+            // Defensive: check if the lock is held before unlocking
+            if (pitLock.isHeldByCurrentThread()) {
+                pitLock.unlock();
+            }
         }
     }
 }
