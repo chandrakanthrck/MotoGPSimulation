@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
@@ -169,8 +170,10 @@ public class RaceSimulationService {
 
     }
 
+
     private void writeResultsToCsv(List<RaceResultDTO> results) {
-        String fileName = "race_results.csv";
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
+        String fileName = "race_results_" + timestamp + ".csv";
 
         try (PrintWriter writer = new PrintWriter(fileName)) {
             writer.println("Rider,AvgLapTime(ms),TotalLaps,PitStops,AvgPitWaitTime(ms)");
@@ -184,10 +187,11 @@ public class RaceSimulationService {
                         r.getAveragePitWaitTime());
             }
 
-            System.out.println("📁 Race results written to " + fileName);
+            System.out.println("📁 Race results written to: " + fileName);
 
         } catch (Exception e) {
-            System.err.println("❌ Failed to write CSV: " + e.getMessage());
+            System.err.println("❌ Failed to write race results: " + e.getMessage());
         }
     }
+
 }
