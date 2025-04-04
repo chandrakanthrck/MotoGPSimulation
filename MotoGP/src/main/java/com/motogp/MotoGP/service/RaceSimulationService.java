@@ -3,6 +3,7 @@ package com.motogp.MotoGP.service;
 import com.motogp.MotoGP.dto.RaceResultDTO;
 import com.motogp.MotoGP.model.*;
 import com.motogp.MotoGP.repository.*;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.PrintWriter;
@@ -21,6 +22,7 @@ public class RaceSimulationService {
     private final LapRepository lapRepository;
     private final PitStopRepository pitStopRepository;
     private final RiderRepository riderRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private final ReentrantLock pitLock = new ReentrantLock();
     private final Condition pitAvailable = pitLock.newCondition();
@@ -30,11 +32,13 @@ public class RaceSimulationService {
     public RaceSimulationService(RaceSessionRepository raceSessionRepository,
                                  LapRepository lapRepository,
                                  PitStopRepository pitStopRepository,
-                                 RiderRepository riderRepository) {
+                                 RiderRepository riderRepository,
+                                 SimpMessagingTemplate messagingTemplate) {
         this.raceSessionRepository = raceSessionRepository;
         this.lapRepository = lapRepository;
         this.pitStopRepository = pitStopRepository;
         this.riderRepository = riderRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public void startRace(List<Rider> riders) {
@@ -83,6 +87,7 @@ public class RaceSimulationService {
                 newLap.setRider(rider);
                 lapRepository.save(newLap);
 
+                messagingTemplate.convertAndSend("/topic/lap", newLap);
                 System.out.println("✅ " + rider.getName() + " completed lap " + lap);
 
                 if (lap == 3) {
@@ -115,6 +120,7 @@ public class RaceSimulationService {
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
             pit.setWaitTimeMillis(waitTimeMillis);
+            messagingTemplate.convertAndSend("/topic/pit", pit);
 
             pitLock.unlock();
             Thread.sleep((long) (1000 + Math.random() * 2000));
