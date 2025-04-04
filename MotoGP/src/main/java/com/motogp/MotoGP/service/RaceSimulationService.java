@@ -5,6 +5,7 @@ import com.motogp.MotoGP.model.*;
 import com.motogp.MotoGP.repository.*;
 import org.springframework.stereotype.Service;
 
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -163,7 +164,30 @@ public class RaceSimulationService {
                     avgWaitTime
             ));
         }
-
+        writeResultsToCsv(results);
         return results;
+
+    }
+
+    private void writeResultsToCsv(List<RaceResultDTO> results) {
+        String fileName = "race_results.csv";
+
+        try (PrintWriter writer = new PrintWriter(fileName)) {
+            writer.println("Rider,AvgLapTime(ms),TotalLaps,PitStops,AvgPitWaitTime(ms)");
+
+            for (RaceResultDTO r : results) {
+                writer.printf("%s,%d,%d,%d,%d%n",
+                        r.getRiderName(),
+                        r.getAverageLapTime(),
+                        r.getTotalLaps(),
+                        r.getPitStopCount(),
+                        r.getAveragePitWaitTime());
+            }
+
+            System.out.println("📁 Race results written to " + fileName);
+
+        } catch (Exception e) {
+            System.err.println("❌ Failed to write CSV: " + e.getMessage());
+        }
     }
 }
