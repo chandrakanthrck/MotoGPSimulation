@@ -18,7 +18,7 @@ public class RaceSimulationService {
     private final PitStopRepository pitStopRepository;
     private final RiderRepository riderRepository;
 
-    // Only 2 crews available for pit stops
+    // Pit lane coordination: max 2 riders at a time
     private final ReentrantLock pitLock = new ReentrantLock();
     private final Condition pitAvailable = pitLock.newCondition();
     private int pitInUse = 0;
@@ -94,6 +94,8 @@ public class RaceSimulationService {
     }
 
     private void handlePitStop(Rider rider) {
+        long requestTimeMillis = System.currentTimeMillis(); // ⏱ Rider arrives at pit
+
         pitLock.lock();
         try {
             System.out.println("🅿️ " + rider.getName() + " wants to enter the pit...");
@@ -104,18 +106,22 @@ public class RaceSimulationService {
                 pitAvailable.await();
             }
 
+            // Calculate how long rider waited
+            long waitTimeMillis = System.currentTimeMillis() - requestTimeMillis;
+
             // Enter pit
             pitInUse++;
-            System.out.println("🔧 " + rider.getName() + " has entered the pit. (in use: " + pitInUse + ")");
+            System.out.println("🔧 " + rider.getName() + " entered pit after waiting " + waitTimeMillis + " ms (in use: " + pitInUse + ")");
 
             // Prepare pit stop log
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
+            pit.setWaitTimeMillis(waitTimeMillis); // Store wait time
 
-            // Unlock while simulating the actual pit stop
+            // Unlock while simulating pit work
             pitLock.unlock();
-            Thread.sleep((long) (1000 + Math.random() * 2000)); // simulate pit duration
+            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit duration
             pitLock.lock();
 
             pit.setEndTime(LocalDateTime.now());
@@ -125,12 +131,11 @@ public class RaceSimulationService {
             // Exit pit
             pitInUse--;
             System.out.println("✅ " + rider.getName() + " leaves the pit. (in use: " + pitInUse + ")");
-            pitAvailable.signal(); // Notify one waiting rider
+            pitAvailable.signal(); // Notify next rider
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            // Defensive: check if the lock is held before unlocking
             if (pitLock.isHeldByCurrentThread()) {
                 pitLock.unlock();
             }

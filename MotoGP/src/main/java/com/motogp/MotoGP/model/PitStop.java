@@ -15,6 +15,7 @@ public class PitStop {
     private String type; // "Fuel" or "Tire"
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    private long waitTimeMillis; // how long rider waited to enter pit
 
     @ManyToOne
     private Rider rider;
