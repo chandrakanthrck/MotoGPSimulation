@@ -1,10 +1,12 @@
 package com.motogp.MotoGP.service;
 
+import com.motogp.MotoGP.dto.RaceResultDTO;
 import com.motogp.MotoGP.model.*;
 import com.motogp.MotoGP.repository.*;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
@@ -18,11 +20,11 @@ public class RaceSimulationService {
     private final PitStopRepository pitStopRepository;
     private final RiderRepository riderRepository;
 
-    // Pit lane coordination: max 2 riders at a time
+    // Pit lane coordination
     private final ReentrantLock pitLock = new ReentrantLock();
     private final Condition pitAvailable = pitLock.newCondition();
+    private static final int MAX_PIT_SLOTS = 2;
     private int pitInUse = 0;
-    private final int MAX_PIT_SLOTS = 2;
 
     public RaceSimulationService(RaceSessionRepository raceSessionRepository,
                                  LapRepository lapRepository,
@@ -50,7 +52,7 @@ public class RaceSimulationService {
             executor.submit(() -> {
                 try {
                     System.out.println("🔒 " + rider.getName() + " waiting for race start...");
-                    raceStartLatch.await(); // Wait for green light
+                    raceStartLatch.await();
                     runRiderRace(rider);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -59,12 +61,11 @@ public class RaceSimulationService {
         }
 
         try {
-            Thread.sleep(1000); // Let all threads reach await()
+            Thread.sleep(1000); // ensure all riders reach latch
         } catch (InterruptedException ignored) {}
 
         System.out.println("🏁 RACE STARTING NOW!");
-        raceStartLatch.countDown(); // Green light: all riders go!
-
+        raceStartLatch.countDown();
         executor.shutdown();
     }
 
@@ -72,7 +73,7 @@ public class RaceSimulationService {
         for (int lap = 1; lap <= 5; lap++) {
             try {
                 long lapTime = (long) (3000 + Math.random() * 2000);
-                Thread.sleep(lapTime); // Simulate lap duration
+                Thread.sleep(lapTime);
 
                 Lap newLap = new Lap();
                 newLap.setLapNumber(lap);
@@ -86,7 +87,6 @@ public class RaceSimulationService {
                 if (lap == 3) {
                     handlePitStop(rider);
                 }
-
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -94,44 +94,38 @@ public class RaceSimulationService {
     }
 
     private void handlePitStop(Rider rider) {
-        long requestTimeMillis = System.currentTimeMillis(); // ⏱ Rider arrives at pit
+        long requestTimeMillis = System.currentTimeMillis();
 
         pitLock.lock();
         try {
             System.out.println("🅿️ " + rider.getName() + " wants to enter the pit...");
 
-            // Wait until a pit crew slot is available
             while (pitInUse >= MAX_PIT_SLOTS) {
-                System.out.println("⏳ " + rider.getName() + " is waiting. Pit is full.");
+                System.out.println("⏳ " + rider.getName() + " waiting. Pit is full.");
                 pitAvailable.await();
             }
 
-            // Calculate how long rider waited
             long waitTimeMillis = System.currentTimeMillis() - requestTimeMillis;
 
-            // Enter pit
             pitInUse++;
-            System.out.println("🔧 " + rider.getName() + " entered pit after waiting " + waitTimeMillis + " ms (in use: " + pitInUse + ")");
+            System.out.println("🔧 " + rider.getName() + " entered pit after waiting " + waitTimeMillis + " ms. (in use: " + pitInUse + ")");
 
-            // Prepare pit stop log
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
-            pit.setWaitTimeMillis(waitTimeMillis); // Store wait time
+            pit.setWaitTimeMillis(waitTimeMillis);
 
-            // Unlock while simulating pit work
             pitLock.unlock();
-            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit duration
+            Thread.sleep((long) (1000 + Math.random() * 2000));
             pitLock.lock();
 
             pit.setEndTime(LocalDateTime.now());
             pit.setRider(rider);
             pitStopRepository.save(pit);
 
-            // Exit pit
             pitInUse--;
             System.out.println("✅ " + rider.getName() + " leaves the pit. (in use: " + pitInUse + ")");
-            pitAvailable.signal(); // Notify next rider
+            pitAvailable.signal();
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -140,5 +134,36 @@ public class RaceSimulationService {
                 pitLock.unlock();
             }
         }
+    }
+
+    public List<RaceResultDTO> getRaceResults() {
+        List<Rider> riders = riderRepository.findAll();
+        List<RaceResultDTO> results = new ArrayList<>();
+
+        for (Rider rider : riders) {
+            List<Lap> laps = lapRepository.findAll().stream()
+                    .filter(l -> l.getRider().getId().equals(rider.getId()))
+                    .toList();
+
+            List<PitStop> pitStops = pitStopRepository.findAll().stream()
+                    .filter(p -> p.getRider().getId().equals(rider.getId()))
+                    .toList();
+
+            long avgLapTime = laps.isEmpty() ? 0 :
+                    laps.stream().mapToLong(Lap::getLapTimeMillis).sum() / laps.size();
+
+            long avgWaitTime = pitStops.isEmpty() ? 0 :
+                    pitStops.stream().mapToLong(PitStop::getWaitTimeMillis).sum() / pitStops.size();
+
+            results.add(new RaceResultDTO(
+                    rider.getName(),
+                    avgLapTime,
+                    laps.size(),
+                    pitStops.size(),
+                    avgWaitTime
+            ));
+        }
+
+        return results;
     }
 }
