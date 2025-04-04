@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class RaceSimulationService {
@@ -17,7 +19,10 @@ public class RaceSimulationService {
     private final RiderRepository riderRepository;
 
     // Only 2 crews available for pit stops
-    private final Semaphore pitCrewSemaphore = new Semaphore(2);
+    private final ReentrantLock pitLock = new ReentrantLock();
+    private final Condition pitAvailable = pitLock.newCondition();
+    private int pitInUse = 0;
+    private final int MAX_PIT_SLOTS = 2;
 
     public RaceSimulationService(RaceSessionRepository raceSessionRepository,
                                  LapRepository lapRepository,
@@ -89,26 +94,35 @@ public class RaceSimulationService {
     }
 
     private void handlePitStop(Rider rider) {
+        pitLock.lock();
         try {
-            System.out.println("🅿️ " + rider.getName() + " waiting for pit crew...");
-            pitCrewSemaphore.acquire();
-
+            System.out.println("P" + rider.getName() + " wants to enter pit");
+            while(pitInUse>=MAX_PIT_SLOTS){
+                System.out.println("Wait " + rider.getName() + " waiting. pit full.");
+                pitAvailable.await();
+        }
+            //enter pit
+            pitInUse++;
+            System.out.println("Ongoing" + rider.getName() + " has entered the pit. (in use: " + pitInUse + ")");
+             //Create and save pit stop log
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
 
-            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit time
 
+            pitLock.unlock(); // Unlock during work to let others proceed (important!)
+            Thread.sleep((long) (1000 + Math.random() * 2000)); // Simulate pit time
+            pitLock.lock();   // Lock again to update shared state
             pit.setEndTime(LocalDateTime.now());
             pit.setRider(rider);
             pitStopRepository.save(pit);
-
-            System.out.println("🔧 " + rider.getName() + " finished pit stop (" + pit.getType() + ")");
-
+            pitInUse--;
+            System.out.println("✅ " + rider.getName() + " leaves pit. (in use: " + pitInUse + ")");
+            pitAvailable.signal(); // Wake up next waiting rider
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
-            pitCrewSemaphore.release(); // Release pit crew slot
+            pitLock.unlock(); // Always unlock
         }
     }
 }
