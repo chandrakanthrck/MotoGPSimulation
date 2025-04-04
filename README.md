@@ -1,57 +1,26 @@
-# 🏍️ MotoGP Simulation
+# MotoGP Simulation Backend
 
-A high-performance, multi-threaded MotoGP race simulation backend built with **Spring Boot** and **MySQL**, designed to demonstrate system design principles such as:
-
-- Multithreading
-- Synchronization (CountDownLatch, Semaphore)
-- Concurrency-safe I/O operations
-- Data persistence using JPA
-- Real-world race simulation logic
+A multi-threaded race simulation backend built with **Spring Boot** and **MySQL**, designed to model real-time MotoGP racing with advanced concurrency and system design concepts.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-- 🏁 **Synchronized race start**: All riders wait until the race officially starts using `CountDownLatch`.
-- ⏱️ **Lap simulation**: Riders complete timed laps with random durations.
-- 🅿️ **Pit stop coordination**: Only 2 riders allowed in the pit crew simultaneously, managed with a `Semaphore`.
-- 📊 **Data persistence**: Race sessions, riders, laps, and pit stops are stored in a MySQL database.
-- 🧠 **System design focus**: Ideal for showcasing concurrency, synchronization, and real-time simulation logic.
-
----
-
-## 📦 Tech Stack
-
-- Java 17
-- Spring Boot 3.x
-- Spring Data JPA
-- MySQL
-- Lombok
-- Maven
-
----
-
-## 📂 Project Structure
-
-```
-├── controller         # REST endpoints for race simulation
-├── model              # JPA entity models (Rider, Lap, PitStop, RaceSession)
-├── repository         # Spring Data repositories
-├── service            # Race logic including concurrency and synchronization
-├── resources
-│   └── application.yml # Database configuration
-└── MotoGpApplication.java
-```
+- 🏁 **Synchronized Race Start** — All riders start together using `CountDownLatch`.
+- ⏱️ **Lap Time Simulation** — Riders complete laps with randomized durations.
+- 🅿️ **Pit Stop Limiting** — Only 2 riders allowed in the pit simultaneously via `Semaphore` + `ReentrantLock`.
+- 📊 **Persistent Storage** — Riders, laps, pit stops, and race sessions stored in MySQL via Spring Data JPA.
+- 💡 **System Design Oriented** — Built to demonstrate real-world synchronization, multithreading, and resource contention patterns.
 
 ---
 
 ## 📬 API Endpoints
 
-### POST `/race/start`
+### `POST /race/start`
 
-Start a new race with a list of rider names.
+Starts a new race with given rider names.
 
-**Request body:**
+**Request Body:**
 ```json
 ["Rossi", "Marquez", "Bagnaia"]
 ```
@@ -63,71 +32,61 @@ Start a new race with a list of rider names.
 
 ---
 
-## ⚙️ Concurrency Highlights
+### `GET /race/results`
 
-| Feature               | Tool Used                     | Purpose                                      |
-|----------------------|-------------------------------|----------------------------------------------|
-| Race synchronization | `CountDownLatch`              | All threads wait for green light to start    |
-| Pit lane limit       | `Semaphore` (2 permits)       | Only 2 riders allowed in pit stop at a time  |
-| Multithreaded laps   | `ExecutorService`             | Each rider runs in parallel                  |
-| Shared data safety   | Spring JPA (thread-safe repos)| Avoid race conditions in DB writes           |
+Returns average lap time, pit stops, best lap, total race time per rider.
 
 ---
 
-## 🗃️ Database Schema
+### `GET /race/leaderboard`
 
-Automatically generated via JPA:
-
-- `race_session`
-- `rider`
-- `lap`
-- `pit_stop`
+Sorted leaderboard based on best lap time.
 
 ---
 
-## 🧪 How to Run
+## ⚙️ Setup & Run
 
-1. Start MySQL and create a database:
-
+1. **Start MySQL** and create the database:
 ```sql
 CREATE DATABASE motogp_db;
 ```
 
-2. Configure your `application.yml`:
-
+2. **Configure `application.yml`:**
 ```yaml
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/motogp_db?socket=/tmp/mysql.sock
     username: root
     password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
 ```
 
-3. Build and run:
-
+3. **Build & Run:**
 ```bash
 mvn clean install
 ./mvnw spring-boot:run
 ```
 
-4. Use Postman or `curl` to hit `/race/start`.
+4. **Test with Postman or cURL.**
 
 ---
 
-## ✨ What's Next
+## 📈 Sample Output Metrics
 
-- ⛓️ Add pit lane queue with `Condition` variables
-- 📁 Write lap/pit logs to file (File I/O)
-- 🏆 Leaderboard API (fastest lap, average lap, total time)
-- 📊 Prometheus metrics or OpenAPI UI
+| Rider   | Avg Lap | Pit Stops | Best Lap | Wait Time | Total Time |
+|---------|---------|-----------|----------|-----------|------------|
+| Rossi   | 04:12.1 | 1         | 03:52.3  | 00:01.3   | 20:30.8    |
+| Marquez | 04:07.5 | 1         | 03:49.0  | 00:02.1   | 20:15.5    |
+
+_CSV logs are auto-generated after each race._
 
 ---
 
-## 💼 Designed For System Interviews
+## 🧪 CI/CD Ready
 
-This project simulates concurrency-heavy workflows and showcases:
-
-- Thread lifecycle control
-- Resource contention handling
-- Real-world system breakdown
-- Clean, testable backend architecture
+- GitHub Actions for Maven build and test
+- `.github/workflows/build.yml` included
+- Easily extendable to run integration tests with MySQL Docker container
