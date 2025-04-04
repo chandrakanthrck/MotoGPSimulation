@@ -1,5 +1,6 @@
 package com.motogp.MotoGP.controller;
 
+import com.motogp.MotoGP.dto.RaceResultDTO;
 import com.motogp.MotoGP.service.RaceSimulationService;
 import com.motogp.MotoGP.model.Rider;
 import org.springframework.web.bind.annotation.*;
@@ -48,4 +49,10 @@ public class RaceController {
     public String ping() {
         return "RaceController is up!";
     }
+
+    @GetMapping("/results")
+    public List<RaceResultDTO> getResults() {
+        return simulationService.getRaceResults();
+    }
+
 }
