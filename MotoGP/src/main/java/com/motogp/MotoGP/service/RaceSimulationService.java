@@ -22,7 +22,6 @@ public class RaceSimulationService {
     private final PitStopRepository pitStopRepository;
     private final RiderRepository riderRepository;
 
-    // Pit lane coordination
     private final ReentrantLock pitLock = new ReentrantLock();
     private final Condition pitAvailable = pitLock.newCondition();
     private static final int MAX_PIT_SLOTS = 2;
@@ -63,7 +62,7 @@ public class RaceSimulationService {
         }
 
         try {
-            Thread.sleep(1000); // ensure all riders reach latch
+            Thread.sleep(1000);
         } catch (InterruptedException ignored) {}
 
         System.out.println("🏁 RACE STARTING NOW!");
@@ -165,26 +164,25 @@ public class RaceSimulationService {
                     avgWaitTime
             ));
         }
+
         writeResultsToCsv(results);
         return results;
-
     }
-
 
     private void writeResultsToCsv(List<RaceResultDTO> results) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
         String fileName = "race_results_" + timestamp + ".csv";
 
         try (PrintWriter writer = new PrintWriter(fileName)) {
-            writer.println("Rider,AvgLapTime(ms),TotalLaps,PitStops,AvgPitWaitTime(ms)");
+            writer.println("Rider,AvgLapTime,TotalLaps,PitStops,AvgPitWaitTime");
 
             for (RaceResultDTO r : results) {
-                writer.printf("%s,%d,%d,%d,%d%n",
+                writer.printf("%s,%s,%d,%d,%s%n",
                         r.getRiderName(),
-                        r.getAverageLapTime(),
+                        formatMillis(r.getAverageLapTime()),
                         r.getTotalLaps(),
                         r.getPitStopCount(),
-                        r.getAveragePitWaitTime());
+                        formatMillis(r.getAveragePitWaitTime()));
             }
 
             System.out.println("📁 Race results written to: " + fileName);
@@ -194,4 +192,10 @@ public class RaceSimulationService {
         }
     }
 
+    private String formatMillis(long millis) {
+        long minutes = millis / 60000;
+        long seconds = (millis % 60000) / 1000;
+        long ms = millis % 1000;
+        return String.format("%02d:%02d.%03d", minutes, seconds, ms);
+    }
 }
