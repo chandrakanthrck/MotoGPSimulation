@@ -150,8 +150,9 @@ public class RaceSimulationService {
                     .filter(p -> p.getRider().getId().equals(rider.getId()))
                     .toList();
 
-            long avgLapTime = laps.isEmpty() ? 0 :
-                    laps.stream().mapToLong(Lap::getLapTimeMillis).sum() / laps.size();
+            long totalLapTime = laps.stream().mapToLong(Lap::getLapTimeMillis).sum();
+            long avgLapTime = laps.isEmpty() ? 0 : totalLapTime / laps.size();
+            long bestLapTime = laps.stream().mapToLong(Lap::getLapTimeMillis).min().orElse(0);
 
             long avgWaitTime = pitStops.isEmpty() ? 0 :
                     pitStops.stream().mapToLong(PitStop::getWaitTimeMillis).sum() / pitStops.size();
@@ -161,7 +162,9 @@ public class RaceSimulationService {
                     avgLapTime,
                     laps.size(),
                     pitStops.size(),
-                    avgWaitTime
+                    avgWaitTime,
+                    bestLapTime,
+                    totalLapTime
             ));
         }
 
@@ -174,15 +177,17 @@ public class RaceSimulationService {
         String fileName = "race_results_" + timestamp + ".csv";
 
         try (PrintWriter writer = new PrintWriter(fileName)) {
-            writer.println("Rider,AvgLapTime,TotalLaps,PitStops,AvgPitWaitTime");
+            writer.println("Rider,AvgLapTime,TotalLaps,PitStops,AvgPitWaitTime,BestLap,TotalRaceTime");
 
             for (RaceResultDTO r : results) {
-                writer.printf("%s,%s,%d,%d,%s%n",
+                writer.printf("%s,%s,%d,%d,%s,%s,%s%n",
                         r.getRiderName(),
                         formatMillis(r.getAverageLapTime()),
                         r.getTotalLaps(),
                         r.getPitStopCount(),
-                        formatMillis(r.getAveragePitWaitTime()));
+                        formatMillis(r.getAveragePitWaitTime()),
+                        formatMillis(r.getBestLapTime()),
+                        formatMillis(r.getTotalRaceTime()));
             }
 
             System.out.println("📁 Race results written to: " + fileName);
