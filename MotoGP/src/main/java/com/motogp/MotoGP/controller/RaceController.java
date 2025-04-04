@@ -5,6 +5,7 @@ import com.motogp.MotoGP.service.RaceSimulationService;
 import com.motogp.MotoGP.model.Rider;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -55,4 +56,20 @@ public class RaceController {
         return simulationService.getRaceResults();
     }
 
+    /**
+     * Leaderboard endpoint to get sorted results.
+     * Optional query param: ?sort=bestLap | totalTime (default: bestLap)
+     */
+    @GetMapping("/leaderboard")
+    public List<RaceResultDTO> getLeaderboard(@RequestParam(name = "sort", defaultValue = "bestLap") String sortBy) {
+        List<RaceResultDTO> results = simulationService.getRaceResults();
+
+        switch (sortBy.toLowerCase()) {
+            case "totaltime" -> results.sort(Comparator.comparingLong(RaceResultDTO::getTotalRaceTime));
+            case "bestlap" -> results.sort(Comparator.comparingLong(RaceResultDTO::getBestLapTime));
+            default -> throw new IllegalArgumentException("Unsupported sort type. Use 'bestLap' or 'totalTime'.");
+        }
+
+        return results;
+    }
 }
