@@ -9,13 +9,16 @@ import org.springframework.web.socket.config.annotation.*;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
-    public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic"); // where the client will subscribe
-        config.setApplicationDestinationPrefixes("/app"); // where client sends messages (if needed)
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        //For browser/client-side testing (SockJS)
+        registry.addEndpoint("/ws")
+                .setAllowedOrigins("*")
+                .withSockJS();       // SockJS fallback support
     }
 
     @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/motogp-websocket").setAllowedOriginPatterns("*").withSockJS();
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        registry.enableSimpleBroker("/topic");              // for subscriptions
+        registry.setApplicationDestinationPrefixes("/app"); // for messages sent
     }
 }

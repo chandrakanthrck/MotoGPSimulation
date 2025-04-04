@@ -87,8 +87,8 @@ public class RaceSimulationService {
                 newLap.setRider(rider);
                 lapRepository.save(newLap);
 
-                messagingTemplate.convertAndSend("/topic/lap", newLap);
                 System.out.println("✅ " + rider.getName() + " completed lap " + lap);
+                broadcastLapUpdate(rider, newLap);
 
                 if (lap == 3) {
                     handlePitStop(rider);
@@ -101,8 +101,8 @@ public class RaceSimulationService {
 
     private void handlePitStop(Rider rider) {
         long requestTimeMillis = System.currentTimeMillis();
-
         pitLock.lock();
+
         try {
             System.out.println("🅿️ " + rider.getName() + " wants to enter the pit...");
 
@@ -112,15 +112,14 @@ public class RaceSimulationService {
             }
 
             long waitTimeMillis = System.currentTimeMillis() - requestTimeMillis;
-
             pitInUse++;
-            System.out.println("🔧 " + rider.getName() + " entered pit after waiting " + waitTimeMillis + " ms. (in use: " + pitInUse + ")");
+            System.out.println("🔧 " + rider.getName() + " entered pit (waited " + waitTimeMillis + " ms)");
 
             PitStop pit = new PitStop();
             pit.setType(Math.random() > 0.5 ? "Fuel" : "Tire");
             pit.setStartTime(LocalDateTime.now());
             pit.setWaitTimeMillis(waitTimeMillis);
-            messagingTemplate.convertAndSend("/topic/pit", pit);
+            broadcastPitStopUpdate(rider, pit);
 
             pitLock.unlock();
             Thread.sleep((long) (1000 + Math.random() * 2000));
@@ -131,7 +130,7 @@ public class RaceSimulationService {
             pitStopRepository.save(pit);
 
             pitInUse--;
-            System.out.println("✅ " + rider.getName() + " leaves the pit. (in use: " + pitInUse + ")");
+            System.out.println("✅ " + rider.getName() + " exits pit. (in use: " + pitInUse + ")");
             pitAvailable.signal();
 
         } catch (InterruptedException e) {
@@ -141,6 +140,20 @@ public class RaceSimulationService {
                 pitLock.unlock();
             }
         }
+    }
+
+    private void broadcastLapUpdate(Rider rider, Lap lap) {
+        messagingTemplate.convertAndSend("/topic/lap", String.format(
+                "🏁 %s finished lap %d in %d ms",
+                rider.getName(), lap.getLapNumber(), lap.getLapTimeMillis()
+        ));
+    }
+
+    private void broadcastPitStopUpdate(Rider rider, PitStop pit) {
+        messagingTemplate.convertAndSend("/topic/pit", String.format(
+                "🛠 %s is in pit (%s). Waited: %d ms",
+                rider.getName(), pit.getType(), pit.getWaitTimeMillis()
+        ));
     }
 
     public List<RaceResultDTO> getRaceResults() {
@@ -159,7 +172,6 @@ public class RaceSimulationService {
             long totalLapTime = laps.stream().mapToLong(Lap::getLapTimeMillis).sum();
             long avgLapTime = laps.isEmpty() ? 0 : totalLapTime / laps.size();
             long bestLapTime = laps.stream().mapToLong(Lap::getLapTimeMillis).min().orElse(0);
-
             long avgWaitTime = pitStops.isEmpty() ? 0 :
                     pitStops.stream().mapToLong(PitStop::getWaitTimeMillis).sum() / pitStops.size();
 
@@ -197,7 +209,6 @@ public class RaceSimulationService {
             }
 
             System.out.println("📁 Race results written to: " + fileName);
-
         } catch (Exception e) {
             System.err.println("❌ Failed to write race results: " + e.getMessage());
         }
