@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MotoGP Live Updates</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<h2>MotoGP Live Race Feed</h2>
+<div id="feed"></div>
+
+<script>
+    const socket = new SockJS('http://localhost:8080/ws');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function (frame) {
+        console.log('✅ Connected: ' + frame);
+
+        // Subscribe to lap updates
+        stompClient.subscribe('/topic/lap', function (message) {
+            const lap = JSON.parse(message.body);
+            const display = `${lap.rider} finished lap ${lap.lapNumber} in ${lap.lapTimeMillis}ms`;
+            document.getElementById('feed').innerHTML += `<p>${display}</p>`;
+        });
+
+        // Subscribe to pit stop updates
+        stompClient.subscribe('/topic/pit', function (message) {
+            const pit = JSON.parse(message.body);
+            const display = `${pit.rider} is in pit for ${pit.type} (wait: ${pit.waitTimeMillis}ms)`;
+            document.getElementById('feed').innerHTML += `<p>${display}</p>`;
+        });
+    });
+</script>
+</body>
+</html>

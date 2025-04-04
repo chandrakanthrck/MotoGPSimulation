@@ -10,7 +10,9 @@ import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -143,17 +145,21 @@ public class RaceSimulationService {
     }
 
     private void broadcastLapUpdate(Rider rider, Lap lap) {
-        messagingTemplate.convertAndSend("/topic/lap", String.format(
-                "🏁 %s finished lap %d in %d ms",
-                rider.getName(), lap.getLapNumber(), lap.getLapTimeMillis()
-        ));
+        Map<String, Object> lapUpdate = new HashMap<>();
+        lapUpdate.put("rider", rider.getName());
+        lapUpdate.put("lapNumber", lap.getLapNumber());
+        lapUpdate.put("lapTimeMillis", lap.getLapTimeMillis());
+
+        messagingTemplate.convertAndSend("/topic/lap", lapUpdate);
     }
 
     private void broadcastPitStopUpdate(Rider rider, PitStop pit) {
-        messagingTemplate.convertAndSend("/topic/pit", String.format(
-                "🛠 %s is in pit (%s). Waited: %d ms",
-                rider.getName(), pit.getType(), pit.getWaitTimeMillis()
-        ));
+        Map<String, Object> pitStopUpdate = new HashMap<>();
+        pitStopUpdate.put("rider", rider.getName());
+        pitStopUpdate.put("type", pit.getType());
+        pitStopUpdate.put("waitTimeMillis", pit.getWaitTimeMillis());
+
+        messagingTemplate.convertAndSend("/topic/pit", pitStopUpdate);
     }
 
     public List<RaceResultDTO> getRaceResults() {
