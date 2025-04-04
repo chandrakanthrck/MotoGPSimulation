@@ -1,0 +1,22 @@
+.App {
+  text-align: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+#raceFeed, #pitFeed {
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+
+h2, h3 {
+  font-size: 1.5em;
+  color: #333;
+}
+
+p {
+  font-size: 1.1em;
+}
